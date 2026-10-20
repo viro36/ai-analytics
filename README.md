@@ -46,10 +46,11 @@ ApprovedSelectedCourse — одобрение курса работодател�
 
 ## Технический стек
 
-- Python 3.12
-- Django 6.0
-- PostgreSQL 15
-- Redis 7 (для Celery)
+- Python 3.14.5
+- Django 6.0.5
+- PostgreSQL 18
+- nginx 1.29.8
+- Redis 8 (для Celery)
 - Django REST Framework
 - pytest, pytest-django
 - Docker, Docker Compose
