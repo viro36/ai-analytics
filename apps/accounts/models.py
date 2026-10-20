@@ -1,0 +1,317 @@
+from django.db import models
+from django.contrib.auth import get_user_model
+from apps.organizations.models import Organization, OrganizationType
+
+User = get_user_model()
+
+
+class EmployerProfile(models.Model):
+    """Профиль организации (Работодатель / ВУЗ)"""
+
+    user = models.OneToOneField(
+        "users.CustomUser", on_delete=models.CASCADE, related_name="employer_profile"
+    )
+
+    # ========== 1. Контактная информация ==========
+    actual_address = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Фактический адрес (если отличается от юридического)",
+    )
+    phone = models.CharField(
+        max_length=20, blank=True, null=True, verbose_name="Телефон организации"
+    )
+    email = models.EmailField(
+        blank=True, null=True, verbose_name="Адрес электронной почты организации"
+    )
+    website = models.URLField(blank=True, null=True, verbose_name="Сайт организации")
+
+    # Контактное лицо
+    contact_person_full_name = models.CharField(
+        max_length=300, blank=True, null=True, verbose_name="ФИО контактного лица"
+    )
+    contact_person_position = models.CharField(
+        max_length=255, blank=True, null=True, verbose_name="Должность контактного лица"
+    )
+    contact_person_phone = models.CharField(
+        max_length=20, blank=True, null=True, verbose_name="Телефон контактного лица"
+    )
+    contact_person_email = models.EmailField(
+        blank=True, null=True, verbose_name="Email контактного лица"
+    )
+
+    # ========== 2. Реквизиты ==========
+    checking_account = models.CharField(
+        max_length=20, blank=True, null=True, verbose_name="Расчётный счёт"
+    )
+    bank_name = models.CharField(
+        max_length=300, blank=True, null=True, verbose_name="Банк"
+    )
+    bik = models.CharField(max_length=9, blank=True, null=True, verbose_name="БИК")
+    correspondent_account = models.CharField(
+        max_length=20, blank=True, null=True, verbose_name="Корреспондентский счёт"
+    )
+
+    # ========== 3. Основные показатели деятельности ==========
+    employee_count = models.IntegerField(
+        blank=True, null=True, verbose_name="Текущая численность сотрудников (человек)"
+    )
+    annual_revenue = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name="Объём производства/выручки за прошлый календарный год (в рублях)",
+    )
+
+    # ========== Специальные поля для ВУЗов ==========
+    license_link = models.URLField(
+        blank=True, null=True, verbose_name="Ссылка на лицензию (Рособрнадзор)"
+    )
+    dpo_programs_link = models.URLField(
+        blank=True, null=True, verbose_name="Ссылка на перечень программ ДПО"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Профиль работодателя"
+        verbose_name_plural = "Профили работодателей"
+
+    def __str__(self):
+        return f"Профиль {self.user.organization.short_name if self.user.organization else self.user.username}"
+
+
+# --------------------------------------------------------------------------------------
+
+
+class EmployeeProfile(models.Model):
+    """Профиль работника (создаётся сразу при регистрации)"""
+
+    POSITION_LEVEL_CHOICES = [
+        ("top", "Руководитель высшего звена"),
+        ("middle", "Руководитель среднего звена"),
+        ("lower", "Руководитель низового звена"),
+        ("specialist", "Специалист"),
+        ("office", "Служащий"),
+        ("worker", "Рабочий"),
+    ]
+
+    GENDER_CHOICES = [
+        ("M", "Мужской"),
+        ("F", "Женский"),
+    ]
+
+    EMPLOYMENT_STATUS_CHOICES = [
+        ("employed", "Работаю по найму"),
+        ("self_employed", "Самозанятый"),
+        ("entrepreneur", "ИП"),
+        ("unemployed", "Безработный"),
+    ]
+
+    EDUCATION_LEVEL_CHOICES = [
+        ("secondary", "Среднее"),
+        ("secondary_special", "Среднее специальное"),
+        ("higher", "Высшее"),
+        ("academic_degree", "Ученая степень"),
+    ]
+
+    user = models.OneToOneField(
+        "users.CustomUser", on_delete=models.CASCADE, related_name="employee_profile"
+    )
+
+    snils = models.CharField(max_length=14, unique=True, verbose_name="СНИЛС")
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.CASCADE,
+        verbose_name="Организация",
+        null=True,
+        blank=True,
+    )
+    position = models.CharField(max_length=255, verbose_name="Должность")
+    position_level = models.CharField(
+        max_length=20,
+        choices=POSITION_LEVEL_CHOICES,
+        verbose_name="Категория должности",
+        blank=True,
+        null=True,
+    )
+
+    # 1. Персональные данные
+    gender = models.CharField(
+        max_length=1, choices=GENDER_CHOICES, verbose_name="Пол", blank=True, null=True
+    )
+    citizenship = models.CharField(
+        max_length=100,
+        default="Россия",
+        verbose_name="Гражданство",
+        blank=True,
+        null=True,
+    )
+
+    # 2. Контактные данные
+    phone = models.CharField(
+        max_length=20, verbose_name="Номер телефона", blank=True, null=True
+    )
+    municipality = models.CharField(
+        max_length=200, blank=True, null=True, verbose_name="Муниципалитет"
+    )
+    locality = models.CharField(
+        max_length=200, blank=True, null=True, verbose_name="Населенный пункт"
+    )
+
+    # 3. Информация о трудоустройстве
+    employment_status = models.CharField(
+        max_length=20,
+        choices=EMPLOYMENT_STATUS_CHOICES,
+        verbose_name="Статус занятости",
+        blank=True,
+        null=True,
+    )
+    work_experience_years = models.PositiveIntegerField(
+        blank=True, null=True, verbose_name="Стаж работы (лет)"
+    )
+    is_unemployed = models.BooleanField(
+        default=False,
+        verbose_name="Безработный",
+    )
+    is_svo_participant = models.BooleanField(
+        default=False,
+        verbose_name="Участник СВО",
+    )
+
+    # 4. Образование
+    education_level = models.CharField(
+        max_length=20,
+        choices=EDUCATION_LEVEL_CHOICES,
+        verbose_name="Уровень образования",
+        blank=True,
+        null=True,
+    )
+    education_institution = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name="Название учебного заведения",
+    )
+    graduation_year = models.IntegerField(
+        blank=True, null=True, verbose_name="Год окончания"
+    )
+    specialty = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name="Специальность/направление подготовки",
+    )
+
+    # ========== Желаемая сфера/организация/должность ==========
+    desired_organization_type = models.ForeignKey(
+        OrganizationType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Желаемая сфера деятельности",
+        help_text="В какой сфере вы хотели бы работать?",
+    )
+    desired_organization = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name="Желаемая организация",
+        help_text="В какой организации вы хотели бы работать?",
+    )
+    desired_position = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name="Желаемая должность",
+        help_text="Какую должность вы хотели бы занимать?",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Профиль работника"
+        verbose_name_plural = "Профили работников"
+
+    def __str__(self):
+        if self.organization:
+            return f"{self.user.get_full_name()} - {self.organization.short_name}"
+        return f"{self.user.get_full_name()} - Безработный"
+
+    def is_profile_complete(self):
+        user = self.user
+        if not user.last_name or not user.first_name or not user.birthday:
+            return False
+
+        # Обязательные поля (без организации, должности и категории)
+        required_fields = {
+            "СНИЛС": self.snils,
+            "Пол": self.gender,
+            "Гражданство": self.citizenship,
+            "Уровень образования": self.education_level,
+            "Год окончания": self.graduation_year,
+            "Учебное заведение": self.education_institution,
+            "Специальность": self.specialty,
+            "Населённый пункт": self.locality,
+            "Муниципалитет": self.municipality,
+        }
+
+        # Организация, должность и категория обязательны только для работающих
+        if not self.is_unemployed:
+            if not self.organization_id:
+                return False
+            if not self.position:
+                return False
+            if not self.position_level:
+                return False
+
+        for field_name, value in required_fields.items():
+            if not value:
+                return False
+
+        return True
+
+    def save(self, *args, **kwargs):
+        # Синхронизация: is_unemployed <-> employment_status
+        if self.is_unemployed:
+            self.employment_status = "unemployed"
+        elif self.employment_status == "unemployed":
+            self.employment_status = "employed"
+        super().save(*args, **kwargs)
+
+
+class Position(models.Model):
+    """Справочник должностей, привязанный к типу организации и категории должности."""
+
+    organization_type = models.ForeignKey(
+        "organizations.OrganizationType",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="positions",
+        verbose_name="Тип организации",
+        help_text="Если не указан — должность универсальная (для любого типа)",
+    )
+    position_level = models.CharField(
+        max_length=20,
+        choices=EmployeeProfile.POSITION_LEVEL_CHOICES,
+        verbose_name="Категория должности",
+    )
+    name = models.CharField(max_length=255, verbose_name="Наименование должности")
+    is_active = models.BooleanField(default=True, verbose_name="Активна")
+    sort_order = models.PositiveIntegerField(
+        default=100, verbose_name="Порядок сортировки"
+    )
+
+    class Meta:
+        verbose_name = "Должность"
+        verbose_name_plural = "Должности"
+        ordering = ["organization_type", "position_level", "sort_order", "name"]
+        unique_together = ("organization_type", "position_level", "name")
+
+    def __str__(self):
+        org = self.organization_type.name if self.organization_type else "Любой тип"
+        return f"{org} | {self.get_position_level_display()} — {self.name}"
