@@ -69,6 +69,8 @@ PROGRAM_APPS = [
     "apps.courses",
     "apps.accounts",
     "apps.surveys",
+    "apps.courses",
+    "apps.recommendations",
     "apps.analytics",
 ]
 
