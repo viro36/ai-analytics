@@ -58,7 +58,7 @@ ApprovedSelectedCourse — одобрение курса работодател�
 ---
 
 ## Структура проекта
-
+```
 ai-analytics/
 ├── ai/                       # настройки Django
 │   ├── settings.py           
@@ -85,34 +85,41 @@ ai-analytics/
 ├── .env.example
 ├── pytest.ini
 └── README.md
-
+```
 
 ## Примеры запросов
 #### Найти всех работников школы с должностью «Директор»
+```
 from apps.accounts.models import EmployeeProfile
 
 directors = EmployeeProfile.objects.filter(
     organization__organization_type__name="Общее образование",
     position="Директор школы",
 )
+```
 
 #### Найти результаты диагностики по организации
+```
 from apps.surveys.models import DiagnosticKitResult
 
 results = DiagnosticKitResult.objects.filter(
     session__user__organization_id=organization_id,
     session__status="completed",
 )
+```
 
 #### Посчитать, сколько раз курс рекомендовался
+```
 from apps.recommendations.models import CourseRecommendation
 
 count = CourseRecommendation.objects.filter(course_id=course_id).count()
+```
 
 #### Найти курсы, которые выбирали, но не одобряли
+```
 from apps.recommendations.models import SelectedCourse
 
 pending = SelectedCourse.objects.filter(
     approval__status="pending",
 ).select_related("course", "user")
-
+```
